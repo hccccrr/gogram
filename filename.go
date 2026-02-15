@@ -1,81 +1,86 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
-	"github.com/amarnathcjd/gogram/telegram"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 var (
-	appID   int32  = 25742938                           
-	appHash string = "b35b715fe8dc0a58e8048988286fc5b6" 
-	token   string = "7623679464:AAGqdslPgtOzrAtycf6iuuDGPAJZCw4vJR0" 
+	appID   int32  = 25742938
+	appHash string = "b35b715fe8dc0a58e8048988286fc5b6"
+	token   string = "7623679464:AAGqdslPgtOzrAtycf6iuuDGPAJZCw4vJR0"
 )
 
 func main() {
-	// Gogram client initialization (Updated Syntax)
-	client, err := telegram.NewClient(telegram.ClientConfig{
+	// BOT CLIENT
+	bot, err := tg.NewClient(tg.ClientConfig{
 		AppID:    appID,
 		AppHash:  appHash,
-		LogLevel: telegram.LogInfo,
+		LogLevel: tg.LogInfo,
 	})
 	if err != nil {
-		log.Fatal("Failed to create client:", err)
+		log.Fatal(err)
 	}
 
-	// Login as Bot
-	err = client.LoginBot(token)
-	if err != nil {
+	if err := bot.LoginBot(token); err != nil {
 		log.Fatal("Bot login failed:", err)
 	}
 
-	fmt.Println(">> Bot is online! Send /start to generate session.")
+	fmt.Println("🤖 Bot online. Use terminal for session generation.")
 
-	client.OnMessage(func(ctx *telegram.NewMessage) error {
-		if ctx.Text() == "/start" {
-			ctx.Reply("Gogram String Session generate karan layi apna Phone Number bhejo (e.g., +919876543210):")
-			return nil
-		}
+	// ===== USER SESSION PART (TERMINAL BASED – SAFE & CLEAN) =====
 
-		// Agar message + naal start hunda hai (Phone Number)
-		if strings.HasPrefix(ctx.Text(), "+") {
-			phone := ctx.Text()
-			
-			// User client setup for session generation
-			userClient, _ := telegram.NewClient(telegram.ClientConfig{
-				AppID:   appID,
-				AppHash: appHash,
-			})
+	reader := bufio.NewReader(os.Stdin)
 
-			sentCode, err := userClient.AuthSendCode(phone)
-			if err != nil {
-				ctx.Reply("Error: " + err.Error())
-				return nil
-			}
+	fmt.Print("📞 Enter phone number (+91...): ")
+	phone, _ := reader.ReadString('\n')
+	phone = strings.TrimSpace(phone)
 
-			ctx.Reply("OTP mil gaya? Kripya OTP bhej dyo (Format -> otp:12345):")
-			
-			// OTP Handler
-			client.OnMessage(func(otpCtx *telegram.NewMessage) error {
-				if strings.HasPrefix(otpCtx.Text(), "otp:") {
-					code := strings.TrimPrefix(otpCtx.Text(), "otp:")
-					_, err := userClient.AuthSignIn(phone, sentCode.PhoneCodeHash, code)
-					if err != nil {
-						otpCtx.Reply("Invalid OTP: " + err.Error())
-						return nil
-					}
-
-					// Export session for your bot
-					session, _ := userClient.ExportSession()
-					otpCtx.Reply("✅ Tuhadi Gogram Session String:\n\n`" + session + "`")
-				}
-				return nil
-			})
-		}
-		return nil
+	user, err := tg.NewClient(tg.ClientConfig{
+		AppID:   appID,
+		AppHash: appHash,
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	client.Idle()
+	if err := user.Connect(); err != nil {
+		log.Fatal(err)
+	}
+
+	sentCode, err := user.AuthSendCode(
+		phone,
+		appID,
+		appHash,
+		&tg.CodeSettings{},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print("🔑 Enter OTP: ")
+	otp, _ := reader.ReadString('\n')
+	otp = strings.TrimSpace(otp)
+
+	_, err = user.AuthSignIn(
+		phone,
+		sentCode.PhoneCodeHash,
+		otp,
+		tg.EmailVerification{},
+	)
+	if err != nil {
+		log.Fatal("Login failed:", err)
+	}
+
+	session := user.ExportSession()
+
+	fmt.Println("\n✅ GOGRAM STRING SESSION:\n")
+	fmt.Println(session)
+
+	bot.Idle()
 }
