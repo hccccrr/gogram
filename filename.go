@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	appID   int32  = 25742938
+	appID   int32  = 31637064
 	appHash string = "b35b715fe8dc0a58e8048988286fc5b6"
-	token   string = "7623679464:AAGqdslPgtOzrAtycf6iuuDGPAJZCw4vJR0"
+	token   string = "708fcac0dc48ba4cfef6e4b466e84257"
 )
 
 func main() {
